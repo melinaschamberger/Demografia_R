@@ -1,0 +1,136 @@
+---
+title: 'Trabajo Final'
+author: "Melina Schamberger"
+date: "Diciembre, 2021 "
+output: 
+  prettydoc::html_pretty:
+    theme: leonids
+    highlight: github
+    toc: no
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(readxl)
+```
+
+
+## Buenos Aires: envejecimiento poblacional en el período 2001-2010. 
+
+
+### Objetivos
+
+El presente reporte busca caracterizar el **proceso de envejecimiento poblacional** de la provincia de **Buenos Aires**, a partir de los datos censales correspondientes a los años 2001 y 2010. 
+
+Para ello, se proponen los siguientes *objetivos específicos*: 
+
+ - Comparar la distribución poblacional de la provincia, según sexo y edad de la población en los distintos momentos del tiempo.
+ 
+ - Analizar la dirección y la magnitud del aumento de personas de 60 años y más en el período bajo estudio. 
+ 
+
+##### Envejecimiento
+ 
+Cabe mencionar que, según la [CELADE](https://www.cepal.org/es/temas/envejecimiento), el envejecimiento se define como el aumento progresivo de la proporción de las personas de 60 años y más con respecto a la población total. 
+
+```{r, echo=FALSE}
+
+#Lectura de datos: DF Inicial 
+Poblacion_censal <- read_excel("PoblCensal01y10.xlsx")
+
+#Filtro por provincia seleccionada: Buenos Aires
+bs_as <- Poblacion_censal %>% 
+  filter(PROV_NOMBRE == "BUENOS AIRES")
+
+#Obtengo df por año censal
+primer_censo <- bs_as %>% filter(CENSO == 2001)
+segundo_censo <- bs_as %>% filter(CENSO == 2010)
+
+```
+
+### Análisis de datos
+
+A fin de concretar los objetivos propuestos, es preciso considerar el tamaño total de la población de Buenos Aires en los dos momentos del tiempo: 
+
+ - En 2001, la población total asciende a **`r prettyNum(sum(primer_censo$VARON, primer_censo$MUJER), big.mark = ".", decimal.mark = ",")`** personas; 
+ 
+ - Mientras que, en 2010, la población total es igual a **`r prettyNum(sum(segundo_censo$VARON, segundo_censo$MUJER), big.mark = ".", decimal.mark = ",")`** personas. 
+ 
+##### Pirámides de población 
+
+Asimismo, resulta relevante indagar la distribución por edad y sexo de la población en ambos años. 
+
+```{r, echo = FALSE, fig.width= 8.5, fig.align="center"}
+
+N_prov <- bs_as %>% 
+              pivot_longer(cols = c(VARON, MUJER), names_to = "Sexo", values_to="N") %>% 
+              mutate(Sexo = as.factor(Sexo)) %>% 
+              select(-PROV_CODIGO)
+
+windowsFonts(A = windowsFont("Times New Roman"))
+
+PirsPorc <- N_prov %>% 
+                group_by(CENSO, Sexo) %>% 
+                mutate(Np = round(N/sum(N)*100,2))%>% 
+                ggplot() + 
+                  aes(x = EDAD, y = ifelse(Sexo == "VARON", -Np, Np), fill = Sexo) +
+                  geom_bar(stat = "identity") +
+                  coord_flip() +
+                  scale_y_continuous(labels = abs) +
+                  labs(y = "Porcentaje de población", 
+                       x = "Edad", 
+                       title = "Figura 1. Pirámides de población" ,
+                       subtitle= "Provincia de Buenos Aires.", 
+                       caption = "Fuente: Elaboración propia en base a datos del CPHyV (2001, 2010).") +
+                  theme_minimal() +
+                  theme(legend.position = "top", text= element_text(family = "A")) +
+                  scale_fill_manual(values =c("#FF4612", "#066052"))+
+                  facet_grid(cols = vars(CENSO))
+
+PirsPorc
+
+
+```
+
+##### Indice de masculinidad
+
+Por último, se indaga en el índice de masculinidad. Este, es un índice demográfico que expresa la razón de hombres por mujeres en un determinado territorio, expresada en tanto por ciento.
+
+Su cálculo es el siguiente: 
+
+   $(Total \ de \ Varones / \ Total \ de \ mujeres) * 100$
+
+```{r, echo = FALSE, fig.width= 8.5, fig.align="center"}
+
+grafico_indice <- bs_as %>% 
+  filter(between(EDAD, 60, 100)) %>% 
+  mutate (indice = (VARON / MUJER)*100,
+          CENSO = CENSO %>% as_factor()) %>% 
+  ggplot() +                       
+  aes(x = EDAD, y = indice, color = CENSO) +     
+  geom_line(size=1) +
+  geom_point(aes(shape = CENSO), show.legend = F, size= 2) +
+  labs(y = "Índice de maculinidad", x = "Edad",
+     title = "Figura 2. Índice de masculinidad en población de 60 a 100 años",
+     subtitle = "Provincia de Buenos Aires.",
+     caption = "Fuente: Elaboración propia en base a datos del CPHyV (2001, 2010).",
+     color = "Censo") +
+  scale_colour_manual(values = c("#6497B1", "#FF8919")) +
+  theme_minimal() +
+  theme(legend.position = "bottom", text= element_text(family = "A"))
+
+
+grafico_indice
+
+```
+
+
+### Resultados
+
+De los datos expuestos en la Figura 1, surge que la provincia registra cierta estabilidad en la dinámica poblacional del período bajo estudio. Sin embargo, en el año 2010, puede apreciarse una leve tendencia de suba en las mujeres de edad avanzada.
+ 
+Esta observación se reafirma al analizar el índice de masculinidad de la población con edad entre 60 y 100 años (Figura 2), siendo evidente que en el 2010 existió un descenso en la cantidad de varones, respecto de la de las mujeres. 
+
+En consecuencia, es posible pensar que en la población de Buenos Aires existe cierta estabilidad, aunque podría advertirse un **leve** proceso de envejecimiento poblacional en las mujeres. 
+
